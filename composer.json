@@ -1,0 +1,7 @@
+{
+    "name": "your-name/php-profiler",
+    "description": "PHP Code Profiler",
+    "require": {
+        "nikic/php-parser": "^4.0"
+    }
+}

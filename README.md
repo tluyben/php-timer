@@ -1,37 +1,37 @@
 # PHP-Timers 🕒
 
-A lightweight PHP code profiler that helps you understand where your code spends its time. Built with Go and powered by php-parser.
+PHP code profiler that instruments your code to measure execution time. Built using nikic/php-parser.
 
 ## Features 🌟
 
-- 📊 Automatic code instrumentation
-- 🔄 Non-invasive timing measurements
-- 📝 Original code preservation
-- 📈 Aggregated or detailed timing results
-- 🔙 Easy restoration of original files
+- Automatic code instrumentation
+- Original code preservation
+- Timing measurements with microsecond precision
+- Verbose/aggregated timing modes
+- One-command file restoration
 
 ## Installation 🛠️
 
 ```bash
-go get github.com/z7zmey/php-parser
-go build -o php-timers
+composer require nikic/php-parser
+chmod +x php-timers
 ```
 
 ## Usage 💻
 
-### Profile a Single File
+Profile a file:
 
 ```bash
 ./php-timers script.php
 ```
 
-### Detailed Profiling (Verbose Mode)
+Detailed profiling:
 
 ```bash
 ./php-timers --verbose script.php
 ```
 
-### Restore Original Files
+Restore originals:
 
 ```bash
 ./php-timers --restore /path/to/directory
@@ -39,10 +39,10 @@ go build -o php-timers
 
 ## How It Works 🔍
 
-1. Creates a backup of your original PHP file as `filename.__org__.php`
-2. Instruments your code with timing measurements
-3. Runs the instrumented code
-4. Outputs timing results in HTML comments
+1. Creates `filename.__org__.php` backup
+2. Instruments code with DateTime measurements
+3. Records timing for each statement
+4. Outputs results in HTML comments
 
 ## Output Format 📋
 
@@ -53,35 +53,28 @@ Array
     [0] => Array
         (
             [line] => 5
-            [code] => "console.log('Hello');"
-            [time] => 0.023
+            [code] => "original_code_here"
+            [start] => DateTime Object
+            [end] => DateTime Object
+            [diff] => DateInterval Object
         )
-    ...
 )
 -->
 ```
 
 ## Best Practices 🎯
 
-- Run on development environments only
-- Use `--verbose` for debugging loops
-- Keep original files backed up
-- Use `--restore` when done profiling
+- Use in development only
+- --verbose for loop analysis
+- Backup important files
+- Always restore after profiling
 
 ## Limitations ⚠️
 
-- Adds minimal overhead to execution time
-- Not suitable for production use
-- Requires write permissions in target directory
-
-## Contributing 🤝
-
-PRs welcome! Please ensure:
-
-1. Code follows Go standards
-2. Tests are included
-3. Documentation is updated
+- Adds overhead to execution
+- Development use only
+- Requires file write permissions
 
 ## License 📜
 
-MIT License - See LICENSE file for details
+MIT License
