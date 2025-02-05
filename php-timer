@@ -1,0 +1,134 @@
+#!/usr/bin/env php
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+
+use PhpParser\Error;
+use PhpParser\ParserFactory;
+use PhpParser\Node;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\PrettyPrinter;
+
+class TimingVisitor extends NodeVisitorAbstract {
+    private $timerCount = 0;
+    private $originalCode;
+    private $printer;
+
+    public function __construct($code) {
+        $this->originalCode = $code;
+        $this->printer = new PrettyPrinter\Standard;
+    }
+
+    public function beforeTraverse(array $nodes) {
+        array_unshift($nodes, new Node\Stmt\Expression(
+            new Node\Expr\Assign(
+                new Node\Expr\Variable('_____ptimers'),
+                new Node\Expr\Array_([])
+            )
+        ));
+        return $nodes;
+    }
+
+    public function leaveNode(Node $node) {
+        if ($node instanceof Node\Stmt) {
+            $this->timerCount++;
+            $startVar = "_____sftimer_{$this->timerCount}";
+            $endVar = "_____eftimer_{$this->timerCount}";
+            
+            // Get original code snippet
+            $start = $node->getStartFilePos();
+            $end = $node->getEndFilePos();
+            $originalCode = substr($this->originalCode, $start, $end - $start + 1);
+            
+            return [
+                new Node\Stmt\Expression(new Node\Expr\Assign(
+                    new Node\Expr\Variable($startVar),
+                    new Node\Expr\New_(new Node\Name('DateTime'))
+                )),
+                $node,
+                new Node\Stmt\Expression(new Node\Expr\Assign(
+                    new Node\Expr\Variable($endVar),
+                    new Node\Expr\New_(new Node\Name('DateTime'))
+                )),
+                new Node\Stmt\Expression(new Node\Expr\FuncCall(
+                    new Node\Name('array_push'),
+                    [
+                        new Node\Arg(new Node\Expr\Variable('_____ptimers')),
+                        new Node\Arg(new Node\Expr\Array_([
+                            new Node\Expr\ArrayItem(
+                                new Node\Scalar\LNumber($node->getLine()),
+                                new Node\Scalar\String_('line')
+                            ),
+                            new Node\Expr\ArrayItem(
+                                new Node\Scalar\String_($originalCode),
+                                new Node\Scalar\String_('code')
+                            ),
+                            new Node\Expr\ArrayItem(
+                                new Node\Expr\Variable($startVar),
+                                new Node\Scalar\String_('start')
+                            ),
+                            new Node\Expr\ArrayItem(
+                                new Node\Expr\Variable($endVar),
+                                new Node\Scalar\String_('end')
+                            ),
+                            new Node\Expr\ArrayItem(
+                                new Node\Expr\MethodCall(
+                                    new Node\Expr\Variable($endVar),
+                                    'diff',
+                                    [new Node\Arg(new Node\Expr\Variable($startVar))]
+                                ),
+                                new Node\Scalar\String_('diff')
+                            )
+                        ]))
+                    ]
+                ))
+            ];
+        }
+        return null;
+    }
+}
+
+function processFile($inputFile) {
+    if (!file_exists($inputFile)) {
+        die("Input file not found: $inputFile\n");
+    }
+
+    $orgFile = preg_replace('/\.php$/', '.__org__.php', $inputFile);
+    
+    if (!file_exists($orgFile)) {
+        copy($inputFile, $orgFile);
+    }
+    
+    $code = file_get_contents($orgFile);
+    
+    $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+    try {
+        $ast = $parser->parse($code);
+    } catch (Error $error) {
+        die("Parse error: {$error->getMessage()}\n");
+    }
+
+    $traverser = new NodeTraverser;
+    $traverser->addVisitor(new TimingVisitor($code));
+
+    $ast = $traverser->traverse($ast);
+    
+    $ast[] = new Node\Stmt\Echo_([new Node\Scalar\String_("<!-- Results: \n")]);
+    $ast[] = new Node\Stmt\Expression(new Node\Expr\FuncCall(
+        new Node\Name('print_r'),
+        [new Node\Arg(new Node\Expr\Variable('_____ptimers'))]
+    ));
+    $ast[] = new Node\Stmt\Echo_([new Node\Scalar\String_("\n-->\n")]);
+    
+    $prettyPrinter = new PrettyPrinter\Standard;
+    $newCode = $prettyPrinter->prettyPrintFile($ast);
+    
+    file_put_contents($inputFile, $newCode);
+}
+
+array_shift($argv);
+foreach ($argv as $file) {
+    if (preg_match('/\.php$/', $file)) {
+        processFile($file);
+    }
+}

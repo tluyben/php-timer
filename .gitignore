@@ -12,4 +12,3 @@ env.local
 /vendor/
 /Godeps/
 editor
-php-timer
